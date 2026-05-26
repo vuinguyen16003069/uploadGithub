@@ -1,0 +1,17 @@
+# Thư mục phụ thuộc Node.js
+node_modules/
+
+# Tệp cấu hình môi trường chứa Token bí mật (CỰC KỲ QUAN TRỌNG)
+.env
+.env.local
+.env.*.local
+
+# Nhật ký hệ thống (Logs)
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Các tệp tạm thời của hệ điều hành
+.DS_Store
+Thumbs.db

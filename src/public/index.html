@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitHub Media Uploader - Lưu trữ & Lấy Link Trực Tiếp</title>
+  <meta name="description"
+    content="Tải nhanh hình ảnh, video lên GitHub Repository và lấy ngay liên kết raw.githubusercontent.com trực tiếp, không bị CORS.">
+  <!-- Google Fonts: Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <!-- Background Decorative Gradients -->
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo">
+        <i class="fab fa-github logo-icon"></i>
+        <h1>GitHub <span class="gradient-text">Media Uploader</span></h1>
+      </div>
+      <p class="subtitle">Tải ảnh/video hàng loạt lên GitHub và lấy link xem trực tiếp tốc độ cao</p>
+
+      <!-- Theme Switcher & Settings Trigger Button Group -->
+      <div class="header-actions">
+        <button id="theme-toggle-btn" class="btn btn-circle-lg shadow-btn" title="Chuyển đổi Chế độ Sáng/Tối">
+          <i class="fas fa-moon"></i>
+        </button>
+        <button id="toggle-settings-btn" class="btn btn-secondary shadow-btn" title="Cài đặt cấu hình GitHub">
+          <i class="fas fa-cog"></i> <span>Cài Đặt GitHub</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="app-main">
+
+      <!-- Settings Panel (Collapsible Card) -->
+      <section id="settings-card" class="card glass-card hidden">
+        <div class="card-header">
+          <h2><i class="fas fa-sliders-h icon-gradient"></i> Cấu Hình Kho Lưu Trữ GitHub</h2>
+          <button id="close-settings-btn" class="close-btn" title="Đóng cài đặt">&times;</button>
+        </div>
+        <form id="config-form" class="config-form">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="github-token">GitHub Personal Access Token (PAT)</label>
+              <div class="input-with-icon">
+                <i class="fas fa-key input-icon"></i>
+                <input type="password" id="github-token" name="token" placeholder="github_pat_..." required>
+                <button type="button" id="toggle-token-visibility" class="inner-input-btn" title="Hiện/Ẩn Token">
+                  <i class="fas fa-eye"></i>
+                </button>
+              </div>
+              <small class="form-tip">Cần có quyền <code>repo</code> để đẩy file lên.</small>
+            </div>
+
+            <div class="form-group">
+              <label for="github-owner">GitHub Username / Tổ Chức (Owner)</label>
+              <div class="input-with-icon">
+                <i class="fas fa-user input-icon"></i>
+                <input type="text" id="github-owner" name="owner" placeholder="Ví dụ: myusername" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="github-repo">Tên Repository (Kho lưu trữ)</label>
+              <div class="input-with-icon">
+                <i class="fas fa-folder-open input-icon"></i>
+                <input type="text" id="github-repo" name="repo" placeholder="Ví dụ: my-assets-repo" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="github-branch">Nhánh (Branch)</label>
+              <div class="input-with-icon">
+                <i class="fas fa-code-branch input-icon"></i>
+                <input type="text" id="github-branch" name="branch" placeholder="mặc định: main" value="main">
+              </div>
+            </div>
+
+            <div class="form-group full-width">
+              <label for="github-path">Thư mục tải lên (Target Folder/Path)</label>
+              <div class="input-with-icon">
+                <i class="fas fa-file-invoice input-icon"></i>
+                <input type="text" id="github-path" name="path" placeholder="Ví dụ: assets/uploads">
+              </div>
+              <small class="form-tip">Các tệp tin sẽ tự động được lưu vào thư mục này với tên tệp duy nhất tránh trùng
+                lặp.</small>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" id="save-config-btn" class="btn btn-primary btn-glow">
+              <i class="fas fa-save"></i> Lưu Cấu HÌnh
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Connection Status Banner -->
+      <div id="status-banner" class="status-banner glass-card warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        <span>Vui lòng hoàn thành <strong>Cấu hình GitHub</strong> để bắt đầu tải lên!</span>
+      </div>
+
+      <!-- Upload Section -->
+      <section class="upload-section">
+        <!-- Tabs -->
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="tab-url" id="tab-btn-url">
+            <i class="fas fa-link"></i> Tải qua Liên Kết (URL)
+          </button>
+          <button class="tab-btn" data-tab="tab-file" id="tab-btn-file">
+            <i class="fas fa-cloud-upload-alt"></i> Tải Tệp Lên (Cục bộ)
+          </button>
+        </div>
+
+        <!-- Tab Content: URL Upload (Supports Multiple URLs) -->
+        <div class="tab-content active" id="tab-url">
+          <div class="card glass-card">
+            <form id="url-upload-form">
+              <div class="form-group">
+                <label for="media-urls">Nhập các liên kết hình ảnh / video (Hỗ trợ hàng loạt)</label>
+                <textarea id="media-urls" rows="6" placeholder="Dán các link vào đây, mỗi link một dòng hoặc dạng mảng JSON...
+Ví dụ:
+[
+  'https://files.catbox.moe/voipkl.mp4',
+  'https://files.catbox.moe/5xgv83.mp4'
+..." required></textarea>
+                <small class="form-tip">Nhập tối đa 500 dòng để máy chủ tải lên song song mượt mà nhất.</small>
+              </div>
+
+              <div class="form-group single-url-only-field">
+                <label for="custom-filename">Tên tệp tùy chỉnh (Chỉ áp dụng khi tải 1 liên kết duy nhất)</label>
+                <div class="input-with-icon">
+                  <i class="fas fa-pen input-icon"></i>
+                  <input type="text" id="custom-filename" placeholder="Tên tệp mong muốn, ví dụ: video-cute.mp4">
+                </div>
+              </div>
+
+              <button type="submit" id="url-submit-btn" class="btn btn-primary btn-block btn-glow">
+                <i class="fas fa-paper-plane"></i> Bắt đầu Tải Hàng Loạt
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Tab Content: File Upload (Supports Multiple Files) -->
+        <div class="tab-content" id="tab-file">
+          <div class="card glass-card drag-drop-card" id="drop-zone">
+            <input type="file" id="file-input" class="hidden-input" accept="image/*,video/*" multiple>
+            <div class="drag-drop-content">
+              <div class="drag-icon-container">
+                <i class="fas fa-cloud-upload-alt drag-icon"></i>
+              </div>
+              <h3>Kéo & Thả một hoặc nhiều tệp tin vào đây</h3>
+              <p>Hoặc <span class="browse-link">chọn tệp từ thiết bị</span></p>
+              <span class="file-limits">Hỗ trợ nhiều Ảnh, Video cùng lúc, dung lượng mỗi tệp tối đa 50MB</span>
+            </div>
+
+            <!-- List of Selected Files for upload -->
+            <div id="selected-files-container" class="selected-files-container hidden">
+              <h4 class="selected-files-title">Danh sách tệp tin đã chọn (<span id="selected-files-count">0</span>)</h4>
+              <div id="selected-files-list" class="selected-files-list">
+                <!-- Selected items will be populated here -->
+              </div>
+            </div>
+          </div>
+          <button type="button" id="file-submit-btn" class="btn btn-primary btn-block btn-glow mt-4 hidden">
+            <i class="fas fa-cloud-upload-alt"></i> Bắt Đầu Tải Danh Sách Lên GitHub
+          </button>
+        </div>
+      </section>
+
+      <!-- Upload Progress Container (Detailed Parallel Upload Progress) -->
+      <section id="progress-container" class="progress-container glass-card hidden">
+        <div class="progress-header">
+          <span class="progress-status"><i class="fas fa-spinner fa-spin"></i> Đang tải lên danh sách tài
+            nguyên...</span>
+          <span class="progress-percentage" id="progress-percent">0%</span>
+        </div>
+        <div class="progress-bar-wrapper">
+          <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        <div id="progress-items-list" class="progress-items-list mt-2">
+          <!-- Tiến trình của từng tệp riêng biệt hiển thị ở đây -->
+        </div>
+      </section>
+
+      <!-- Upload Success Card (Supports Bulk Output Display) -->
+      <section id="result-card" class="card glass-card success-card hidden">
+        <div class="success-icon-badge">
+          <i class="fas fa-check-circle"></i>
+        </div>
+        <h2>Đã Tải Lên Thành Công!</h2>
+        <p class="success-message">Các tệp tin của bạn đã được xuất bản lên kho lưu trữ GitHub.</p>
+
+        <!-- Bulk Copy Buttons -->
+        <div class="bulk-actions-buttons hidden" id="bulk-actions-container">
+          <button type="button" id="copy-all-view-btn" class="btn btn-primary shadow-btn">
+            <i class="fas fa-copy"></i> Copy Tất Cả Link Xem (.io)
+          </button>
+          <button type="button" id="copy-all-download-btn" class="btn btn-secondary shadow-btn">
+            <i class="fas fa-copy"></i> Copy Tất Cả Link Tải (.raw)
+          </button>
+          <button type="button" id="copy-all-json-btn" class="btn btn-accent shadow-btn">
+            <i class="fas fa-code"></i> Copy Dạng JSON (Mảng)
+          </button>
+        </div>
+
+        <!-- Dynamic Results List -->
+        <div class="bulk-results-list" id="bulk-results-list">
+          <!-- Danh sách các kết quả tệp tin được chèn ở đây -->
+        </div>
+      </section>
+
+      <!-- History Section -->
+      <section class="history-section card glass-card">
+        <div class="card-header border-bottom">
+          <h2><i class="fas fa-history icon-gradient"></i> Lịch Sử Tải Lên Gần Đây</h2>
+          <button id="clear-history-btn" class="btn-clear-history" title="Xóa toàn bộ lịch sử">
+            <i class="fas fa-trash-alt"></i> <span>Xóa Lịch Sử</span>
+          </button>
+        </div>
+        <div class="history-list" id="history-list">
+          <!-- Lịch sử tải lên sẽ tự động đổ vào đây -->
+          <div class="empty-history" id="empty-history-placeholder">
+            <i class="fas fa-folder-open empty-icon"></i>
+            <p>Chưa có lịch sử tải lên. Tải lên tệp đầu tiên để bắt đầu!</p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>© 2026 GitHub Media Uploader. Tải lên song song & Chế độ Sáng/Tối.</p>
+    </footer>
+  </div>
+
+  <!-- Toast Notification System -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Application Logic -->
+  <script src="app.js"></script>
+</body>
+
+</html>
