@@ -27,16 +27,16 @@ if (process.argv[2] === 'demo') {
     owner: process.env.GITHUB_OWNER,
     repo: process.env.GITHUB_REPO,
     branch: process.env.GITHUB_BRANCH || 'main',
-    path: process.env.GITHUB_PATH || 'assets/media'
+    path: process.env.GITHUB_PATH || 'assets/media',
   };
   const imgurLink = 'https://i.imgur.com/abcdef.mp4';
 
   convertImgurToGithub(imgurLink, myConfig)
-    .then(rawUrl => {
+    .then((rawUrl) => {
       console.log('👉 Link GitHub User Content (Xem trực tuyến) của bạn:\n', rawUrl);
       process.exit(0);
     })
-    .catch(err => {
+    .catch((err) => {
       console.error('❌ Lỗi:', err.message);
       process.exit(1);
     });

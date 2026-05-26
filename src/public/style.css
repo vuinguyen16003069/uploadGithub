@@ -8,31 +8,31 @@
   --bg-card: rgba(30, 41, 59, 0.45);
   --bg-card-hover: rgba(30, 41, 59, 0.6);
   --bg-inner: rgba(15, 23, 42, 0.6);
-  
+
   --primary: #6366f1;
   --primary-glow: rgba(99, 102, 241, 0.4);
   --primary-dark: #4f46e5;
   --accent: #a855f7;
   --accent-glow: rgba(168, 85, 247, 0.3);
-  
+
   --success: #10b981;
   --success-glow: rgba(16, 185, 129, 0.2);
   --warning: #f59e0b;
   --warning-glow: rgba(245, 158, 11, 0.15);
   --danger: #ef4444;
   --danger-glow: rgba(239, 68, 68, 0.2);
-  
+
   --text-main: #f3f4f6;
   --text-muted: #9ca3af;
   --text-inverse: #0b0f19;
-  
+
   --glass-border: rgba(255, 255, 255, 0.08);
   --glass-border-focus: rgba(99, 102, 241, 0.4);
   --radius-lg: 16px;
   --radius-md: 10px;
   --radius-sm: 6px;
-  
-  --font-family: 'Outfit', sans-serif;
+
+  --font-family: "Outfit", sans-serif;
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --theme-transition: background-color 0.5s ease, border-color 0.5s ease, color 0.3s ease;
 }
@@ -44,27 +44,27 @@ body.light-theme {
   --bg-card: rgba(255, 255, 255, 0.75);
   --bg-card-hover: rgba(255, 255, 255, 0.9);
   --bg-inner: rgba(249, 250, 251, 0.8);
-  
+
   --primary: #4f46e5;
   --primary-glow: rgba(79, 70, 229, 0.15);
   --primary-dark: #3730a3;
   --accent: #9333ea;
   --accent-glow: rgba(147, 51, 234, 0.15);
-  
+
   --success: #059669;
   --success-glow: rgba(5, 150, 105, 0.1);
   --warning: #d97706;
   --warning-glow: rgba(217, 119, 6, 0.1);
   --danger: #dc2626;
   --danger-glow: rgba(220, 38, 38, 0.1);
-  
+
   --text-main: #1f2937;
   --text-muted: #6b7280;
   --text-inverse: #ffffff;
-  
+
   --glass-border: rgba(0, 0, 0, 0.08);
   --glass-border-focus: rgba(79, 70, 229, 0.5);
-  
+
   box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
 }
 
@@ -124,9 +124,15 @@ body.light-theme .bg-glow {
 }
 
 @keyframes float-glow {
-  0% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(40px, 30px) scale(1.1); }
-  100% { transform: translate(-20px, -40px) scale(0.95); }
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(40px, 30px) scale(1.1);
+  }
+  100% {
+    transform: translate(-20px, -40px) scale(0.95);
+  }
 }
 
 /* ==========================================================================
@@ -327,6 +333,25 @@ body.light-theme .btn-accent {
   transform: translateY(0);
 }
 
+.btn-cdn {
+  background: linear-gradient(135deg, #ff4e50 0%, #f9d423 100%);
+  color: var(--text-main);
+  box-shadow: 0 4px 15px rgba(255, 78, 80, 0.25);
+}
+
+body.light-theme .btn-cdn {
+  color: #ffffff;
+}
+
+.btn-cdn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 78, 80, 0.45);
+}
+
+.btn-cdn:active {
+  transform: translateY(0);
+}
+
 .btn-circle-lg {
   width: 44px;
   height: 44px;
@@ -369,7 +394,9 @@ body.light-theme .shadow-btn {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
-.mt-4 { margin-top: 16px; }
+.mt-4 {
+  margin-top: 16px;
+}
 
 /* ==========================================================================
    FORMS & INPUTS (TEXTAREA SUPPORT)
@@ -422,6 +449,7 @@ label {
 input[type="text"],
 input[type="password"],
 input[type="url"],
+select.form-select,
 textarea {
   width: 100%;
   background: var(--bg-inner);
@@ -435,8 +463,19 @@ textarea {
 
 input[type="text"],
 input[type="password"],
-input[type="url"] {
+input[type="url"],
+select.form-select {
   padding: 12px 14px 12px 42px;
+}
+
+select.form-select {
+  cursor: pointer;
+  appearance: revert;
+}
+
+select.form-select option {
+  background-color: var(--bg-primary);
+  color: var(--text-main);
 }
 
 textarea {
@@ -448,6 +487,7 @@ textarea {
 input[type="text"]:focus,
 input[type="password"]:focus,
 input[type="url"]:focus,
+select.form-select:focus,
 textarea:focus {
   outline: none;
   border-color: var(--glass-border-focus);
@@ -582,8 +622,14 @@ body.light-theme .tab-btn.active {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ==========================================================================
@@ -834,9 +880,15 @@ body.light-theme .progress-bar-wrapper {
   font-weight: 600;
 }
 
-.progress-item-status.success { color: var(--success); }
-.progress-item-status.error { color: var(--danger); }
-.progress-item-status.running { color: var(--primary); }
+.progress-item-status.success {
+  color: var(--success);
+}
+.progress-item-status.error {
+  color: var(--danger);
+}
+.progress-item-status.running {
+  color: var(--primary);
+}
 
 /* ==========================================================================
    BULK RESULTS DISPLAY (WOW EFFECT)
@@ -852,8 +904,14 @@ body.light-theme .progress-bar-wrapper {
 }
 
 @keyframes scaleUp {
-  from { transform: scale(0.9); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .success-icon-badge {
@@ -1264,8 +1322,14 @@ body.light-theme .toast {
 }
 
 @keyframes slideIn {
-  from { transform: translateX(120%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
+  from {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 .toast.removing {
@@ -1276,17 +1340,23 @@ body.light-theme .toast {
 .toast-success {
   border-left: 4px solid var(--success);
 }
-.toast-success i { color: var(--success); }
+.toast-success i {
+  color: var(--success);
+}
 
 .toast-error {
   border-left: 4px solid var(--danger);
 }
-.toast-error i { color: var(--danger); }
+.toast-error i {
+  color: var(--danger);
+}
 
 .toast-info {
   border-left: 4px solid var(--primary);
 }
-.toast-info i { color: var(--primary); }
+.toast-info i {
+  color: var(--primary);
+}
 
 /* ==========================================================================
    UTILITY CLASSES & ANIMATIONS

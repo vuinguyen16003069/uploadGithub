@@ -3,14 +3,12 @@ const path = require('node:path');
 const { readConfig } = require('./envHelper');
 
 /**
- * Hàm tải lên một tệp tin lên GitHub Repository từ Buffer
- * @param {object} param0 Tham số tải lên
- * @param {Buffer} param0.fileBuffer Buffer nội dung tệp
- * @param {string} param0.fileName Tên tệp tin duy nhất
- * @param {object} param0.configOverrides Cấu hình ghi đè nếu có
- * @returns {Promise<object>} Đối tượng chứa cả 2 liên kết xem trực tiếp và tải xuống
+ * Hàm tải lên nhiều tệp tin lên GitHub Repository trong DUY NHẤT 1 commit dùng low-level Git Data API
+ * @param {Array<object>} files Mảng các đối tượng tệp tin: [{ fileBuffer, fileName }]
+ * @param {object} configOverrides Cấu hình ghi đè nếu có
+ * @returns {Promise<object>} Đối tượng ánh xạ fileName -> { viewUrl, downloadUrl, cdnUrl }
  */
-async function uploadToGithub({ fileBuffer, fileName, configOverrides = {} }) {
+async function uploadMultipleToGithub(files, configOverrides = {}) {
   const baseConfig = readConfig();
   const config = { ...baseConfig, ...configOverrides };
 
@@ -18,6 +16,10 @@ async function uploadToGithub({ fileBuffer, fileName, configOverrides = {} }) {
 
   if (!token || !owner || !repo) {
     throw new Error('Thiếu cấu hình GitHub (Token, Owner hoặc Repo). Vui lòng cập nhật cài đặt.');
+  }
+
+  if (!files || files.length === 0) {
+    return {};
   }
 
   // Phân tích thư mục lưu trữ từ configPath
@@ -36,49 +38,130 @@ async function uploadToGithub({ fileBuffer, fileName, configOverrides = {} }) {
     }
   }
 
-  const finalPath = `${targetDir}/${fileName}`.replace(/\/+/g, '/');
-  const base64Content = fileBuffer.toString('base64');
-  const uploadUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${finalPath}`;
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    Accept: 'application/vnd.github+json',
+    'Content-Type': 'application/json',
+    'User-Agent': 'Imgur-To-GitHub-Converter',
+  };
 
-  const maxRetries = 5;
+  const maxRetries = 3;
   let attempt = 0;
 
   while (attempt < maxRetries) {
     try {
-      await axios({
-        method: 'PUT',
-        url: uploadUrl,
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: 'application/vnd.github+json',
-          'Content-Type': 'application/json',
-          'User-Agent': 'Imgur-To-GitHub-Converter',
-        },
-        data: {
-          message: `Upload media via GitHub Media Uploader Web App: ${fileName}`,
-          content: base64Content,
-          branch: branch,
-        },
+      // BƯỚC 1: Lấy SHA commit mới nhất của nhánh
+      const refUrl = `https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${branch}`;
+      const refRes = await axios.get(refUrl, { headers });
+      const latestCommitSha = refRes.data.object.sha;
+
+      // BƯỚC 2: Tạo Blobs song song cho tất cả các file (Không gây 409)
+      console.log(`[+] Đang tạo ${files.length} Git blobs song song...`);
+      const blobPromises = files.map(async (file) => {
+        const blobUrl = `https://api.github.com/repos/${owner}/${repo}/git/blobs`;
+        const blobRes = await axios.post(
+          blobUrl,
+          {
+            content: file.fileBuffer.toString('base64'),
+            encoding: 'base64',
+          },
+          { headers }
+        );
+        return { fileName: file.fileName, sha: blobRes.data.sha };
       });
 
+      const blobs = await Promise.all(blobPromises);
+
+      // BƯỚC 3: Tạo một Tree mới chứa tất cả các blobs
+      console.log('[+] Đang tạo Git tree mới...');
+      const treeItems = blobs.map((blob) => {
+        const finalPath = `${targetDir}/${blob.fileName}`.replace(/\/+/g, '/');
+        return {
+          path: finalPath,
+          mode: '100644', // Normal file mode
+          type: 'blob',
+          sha: blob.sha,
+        };
+      });
+
+      const treeUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees`;
+      const treeRes = await axios.post(
+        treeUrl,
+        {
+          base_tree: latestCommitSha,
+          tree: treeItems,
+        },
+        { headers }
+      );
+      const newTreeSha = treeRes.data.sha;
+
+      // BƯỚC 4: Tạo một Commit mới
+      console.log('[+] Đang tạo Git commit mới...');
+      const commitUrl = `https://api.github.com/repos/${owner}/${repo}/git/commits`;
+      const commitRes = await axios.post(
+        commitUrl,
+        {
+          message: `Upload ${files.length} media files via GitHub Media Uploader`,
+          tree: newTreeSha,
+          parents: [latestCommitSha],
+        },
+        { headers }
+      );
+      const newCommitSha = commitRes.data.sha;
+
+      // BƯỚC 5: Cập nhật nhánh trỏ tới commit mới (Gây 409 nếu có conflict, nhưng chỉ chạy 1 lần duy nhất)
+      console.log('[+] Đang cập nhật tham chiếu nhánh HEAD...');
+      await axios.patch(
+        refUrl,
+        {
+          sha: newCommitSha,
+          force: false,
+        },
+        { headers }
+      );
+
+      // Xây dựng đối tượng kết quả trả về
+      const results = {};
       const lowercaseOwner = owner.toLowerCase();
-      const viewUrl = `https://${lowercaseOwner}.github.io/${repo}/${finalPath}`;
-      const downloadUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${finalPath}`;
-      
-      return { viewUrl, downloadUrl };
+      for (const file of files) {
+        const finalPath = `${targetDir}/${file.fileName}`.replace(/\/+/g, '/');
+        results[file.fileName] = {
+          viewUrl: `https://${lowercaseOwner}.github.io/${repo}/${finalPath}`,
+          downloadUrl: `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${finalPath}`,
+          cdnUrl: `https://cdn.jsdelivr.net/gh/${owner}/${repo}@${branch}/${finalPath}`,
+        };
+      }
+
+      console.log(`[+] Đã tải lên thành công ${files.length} file trong 1 commit duy nhất!`);
+      return results;
     } catch (err) {
       attempt++;
-      const isConflict = err.response?.status === 409;
+      const isConflict = err.response?.status === 409 || err.message.includes('409');
       if (isConflict && attempt < maxRetries) {
-        const delay = Math.floor(Math.random() * 1500) + 500 * attempt;
-        console.warn(`[!] Xung đột GitHub API (409) khi tải lên ${fileName}. Đang thử lại lần ${attempt}/${maxRetries} sau ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        const delay = Math.floor(Math.random() * 1500) + 1000 * attempt;
+        console.warn(
+          `[!] Xung đột hoặc khóa nhánh (409) khi cập nhật commit. Đang thử lại toàn bộ lô lần ${attempt}/${maxRetries} sau ${delay}ms...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, delay));
       } else {
         const errorDetails = err.response?.data ? JSON.stringify(err.response.data) : err.message;
-        throw new Error(`Lỗi GitHub API: ${errorDetails}`);
+        throw new Error(`Thất bại khi đẩy commit lên GitHub: ${errorDetails}`);
       }
     }
   }
+}
+
+/**
+ * Hàm tải lên một tệp tin duy nhất lên GitHub Repository từ Buffer
+ * @param {object} param0 Tham số tải lên
+ * @param {Buffer} param0.fileBuffer Buffer nội dung tệp
+ * @param {string} param0.fileName Tên tệp tin duy nhất
+ * @param {object} param0.configOverrides Cấu hình ghi đè nếu có
+ * @returns {Promise<object>} Đối tượng chứa cả 2 liên kết xem trực tiếp và tải xuống
+ */
+async function uploadToGithub({ fileBuffer, fileName, configOverrides = {} }) {
+  const result = await uploadMultipleToGithub([{ fileBuffer, fileName }], configOverrides);
+  return result[fileName];
 }
 
 /**
@@ -96,13 +179,17 @@ async function convertImgurToGithub(imgurUrl, config) {
       responseType: 'arraybuffer',
     });
     const fileBuffer = Buffer.from(imgurRes.data);
-    
+
     const fileName = path.basename(new URL(imgurUrl).pathname) || `media_${Date.now()}.mp4`;
     const result = await uploadToGithub({
       fileBuffer,
       fileName,
-      configOverrides: config
+      configOverrides: config,
     });
+
+    const format = config.defaultLinkFormat || 'view';
+    if (format === 'cdn') return result.cdnUrl;
+    if (format === 'download') return result.downloadUrl;
     return result.viewUrl;
   } catch (err) {
     throw new Error(`Thất bại khi chuyển đổi video: ${err.message}`);
@@ -111,5 +198,6 @@ async function convertImgurToGithub(imgurUrl, config) {
 
 module.exports = {
   uploadToGithub,
-  convertImgurToGithub
+  uploadMultipleToGithub,
+  convertImgurToGithub,
 };

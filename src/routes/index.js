@@ -8,7 +8,7 @@ const router = express.Router();
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 50 * 1024 * 1024 } // Giới hạn 50MB
+  limits: { fileSize: 50 * 1024 * 1024 }, // Giới hạn 50MB
 });
 
 // Định nghĩa các endpoints

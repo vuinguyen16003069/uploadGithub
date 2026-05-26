@@ -7,13 +7,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "ignore": [
-      "node_modules/**",
-      "dist/**",
-      "build/**",
-      "package-lock.json",
-      "package.json"
-    ]
+    "ignore": ["node_modules/**", "dist/**", "build/**", "package-lock.json", "package.json"]
   },
   "formatter": {
     "enabled": true,
